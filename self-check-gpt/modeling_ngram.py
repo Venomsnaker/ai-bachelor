@@ -35,7 +35,7 @@ class UnigramModel:
         For each unigram in the vocab, calculate its probability in the text
         """
         # k is smoothing pseudo-count for each unigram
-        self.prob = {}
+        self.probs = {}
         vocab_size = len(self.counts)
 
         for unigram, unigram_count in self.counts.items():
@@ -49,19 +49,16 @@ class UnigramModel:
         """
         avg_neg_logprob = []
         max_neg_logprob = []
-        logprob_doc = [] # Average at document-level, i.e. Avg(Tokens)
+        logprob_doc = []
 
         for sentence in sentences:
             logprob_sent = []
             tokens = [token.text for token in self.nlp(sentence)]
 
             for token in tokens:
-                token_ = token
-
                 if self.lowercase:
                     token = token.lower()
                 if token not in self.counts:
-                    token_ = '<unk>'
                     token = '<unk>'
                 prob = self.probs[token]
                 logprob = np.log(prob)
@@ -100,7 +97,7 @@ class NgramModel:
             ngs = list(ngrams(tokens, n=self.n, pad_left=True, left_pad_symbol=self.left_pad_symbol))
             assert len(ngs) == len(tokens)
             self.sentence_count += 1
-            self.ngram_count += len(ngrams)
+            self.ngram_count += len(ngs)
 
             for ng in ngs:
                 if ng not in self.counts:
@@ -135,7 +132,9 @@ class NgramModel:
 
             if self.lowercase:
                 tokens_ = [token.lower() for token in tokens]
-            ngs = List(ngrams(tokens_, n=self.n, pad_left=True, left_pad_symbol=self.left_pad_symbol))
+            else:
+                tokens_ = [tok for tok in tokens]
+            ngs = list(ngrams(tokens_, n=self.n, pad_left=True, left_pad_symbol=self.left_pad_symbol))
             assert len(ngs) == len(tokens)
 
             for token, ng in zip(tokens, ngs):
@@ -149,4 +148,7 @@ class NgramModel:
             max_neg_logprob.append([-1.0 * np.min(logprob_sent)])
         avg_neg_logprob_doc = -1.0 * np.mean(logprob_doc)
         avg_max_neg_logprob_doc = np.mean(max_neg_logprob)
-        
+        return {
+            'sent_level': {'avg_neg_logprob': avg_neg_logprob, 'max_neg_logprob': max_neg_logprob},
+            'doc_level': {'avg_neg_logprob': avg_neg_logprob_doc, 'avg_max_neg_logprob': avg_max_neg_logprob_doc}
+        }
