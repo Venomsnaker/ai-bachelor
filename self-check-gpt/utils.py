@@ -8,7 +8,7 @@ class MQAGConfig:
     answerability: str = "potsawee/longformer-large-4096-answerable-squad2"
 
 class NLIConfig:
-    nli_model: str = "postawee/deberta-v3-large-mnli"
+    nli_model: str = "potsawee/deberta-v3-large-mnli"
 
 class LMMPromptConfig:
     model: str = "meta-llama/Llama-2-7b-chat-hf"

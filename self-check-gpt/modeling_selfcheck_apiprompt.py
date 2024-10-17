@@ -33,7 +33,7 @@ class SelfCheckAPIPrompt:
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.0
+                temperature=0.0,
                 max_tokens=5
             )
             return chat_completion.choices[0].message.content

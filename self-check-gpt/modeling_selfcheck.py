@@ -10,7 +10,8 @@ logging.set_verbosity_error()
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 from transformers import LongformerTokenizer, LongformerForMultipleChoice, LongformerForSequenceClassification
 from transformers import DebertaV2ForSequenceClassification, DebertaV2Tokenizer
-from utils import MQAGConfig, expand_list1, expand_list2, NLIConfig, LLMPromptConfig
+from selfcheckgpt.utils import MQAGConfig, expand_list1, expand_list2, NLIConfig, LLMPromptConfig
+from modeling_mqag import question_generation_sentence_level, answering
 from modeling_ngram import UnigramModel, NgramModel
 from modeling_selfcheck_apiprompt import SelfCheckAPIPrompt
 
@@ -58,7 +59,6 @@ def method_vanilla_bayes(
     """
     if u_score < AT:
         return 0.5
-    
     a_DT = np.argmax(prob)
     count_match, count_mismatch = 0, 0
 
@@ -121,6 +121,96 @@ def answerability_scoring(
     prob = torch.sigmoid(logits).item()
     return prob
 
+class SelfCheckMQAG:
+    def __init__(
+            self,
+            g1_model: str = None,
+            g2_model: str = None,
+            answering_model: str = None,
+            answerability_model: str = None,
+            device = None
+    ):
+        g1_model = g1_model if g1_model is not None else MQAGConfig.generation1_squad
+        g2_model = g2_model if g2_model is not None else MQAGConfig.generation2
+        answering_model = answering_model if answering_model is not None else MQAGConfig.answering
+        answerability_model = answerability_model if answerability_model is not None else MQAGConfig.answerability
+
+        self.g1_tokenizer = AutoTokenizer.from_pretrained(g1_model)
+        self.g1_model = AutoModelForSeq2SeqLM.from_pretrained(g1_model)
+        self.g2_tokenizer = AutoTokenizer.from_pretrained(g2_model)
+        self.g2_model = AutoModelForSeq2SeqLM.from_pretrained(g2_model)
+        self.a_tokenizer = LongformerTokenizer.from_pretrained(answering_model)
+        self.a_model = LongformerForMultipleChoice.from_pretrained(answering_model)
+        self.u_tokenizer = LongformerTokenizer.from_pretrained(answerability_model)
+        self.u_model = LongformerForSequenceClassification.from_pretrained(answerability_model)
+
+        self.g1_model.eval()
+        self.g2_model.eval()
+        self.a_model.eval()
+        self.u_model.eval()
+
+        if device is None:
+            device = torch.device("cpu")
+        self.g1_model.to(device)
+        self.g2_model.to(device)
+        self.a_model.to(device)
+        self.u_model.to(device)
+        self.device = device
+        print("SelfCheck-MQAG initialized to device", device)
+    
+    @torch.no_grad()
+    def predict(
+        self,
+        sentences: List[str],
+        passage: str,
+        sampled_passages: List[str],
+        num_questions_per_sent: int = 5,
+        scoring_method: str = "bayes_with_alpha", **kwargs,
+        ):
+            assert scoring_method in ['counting', 'bayes', 'bayes_with_alpha']
+            num_samples = len(sampled_passages)
+            sent_scores = []
+            for sentence in sentences:
+                questions = question_generation_sentence_level(
+                    self.g1_model, self.g1_tokenizer,
+                    self.g2_model, self.g2_tokenizer,
+                    sentence, passage, num_questions_per_sent, self.device)
+                scores = []
+                max_seq_length = 4096
+
+                for question_item in questions:
+                    question, options = question_item['question'], question_item['options']
+                    prob = answering(
+                        self.a_model, self.a_tokenizer,
+                        question, options, passage,
+                        max_seq_length, self.device)
+                    u_score = answerability_scoring(
+                        self.u_model, self.u_tokenizer,
+                        question, passage,
+                        max_seq_length, self.device)
+                    prob_s = np.zeros((num_samples, 4))
+                    u_score_s = np.zeros((num_samples, ))
+
+                    for si, sampled_passage in enumerate(sampled_passages):
+                        prob_s[si] = answering(
+                            self.a_model, self.a_tokenizer,
+                            question, options, sampled_passage,
+                            max_seq_length, self.device)
+                        u_score_s[si] = answerability_scoring(
+                            self.u_model, self.u_tokenizer,
+                            question, sampled_passage,
+                            max_seq_length, self.device)
+                    if scoring_method == 'counting':
+                        score = method_simple_counting(prob, u_score, prob_s, u_score_s, num_samples, AT=kwargs['AT'])
+                    elif scoring_method == 'bayes':
+                        score = method_vanilla_bayes(prob, u_score, prob_s, u_score_s, num_samples, beta1=kwargs['beta1'], beta2=kwargs['beta2'], AT=kwargs['AT'])
+                    elif scoring_method == 'bayes_with_alpha':
+                        score = method_bayes_with_alpha(prob, u_score, prob_s, u_score_s, num_samples, beta1=kwargs['beta1'], beta2=kwargs['beta2'])
+                    scores.append(score)
+                sent_score = np.mean(scores)
+                sent_scores.append(sent_score)
+            return np.array(sent_scores)
+
 class SelfCheckBERTScore:
     def __init__(self, default_model="en", rescale_with_baseline=True):
         self.nlp = spacy.load("en_core_web_sm")
@@ -139,8 +229,8 @@ class SelfCheckBERTScore:
         bertscore_array = np.zeros((num_sentences, num_samples))
 
         for s in range(num_samples):
-            sampled_passages = sampled_passages[s]
-            sentences_sample = [sent for sent in self.nlp(sampled_passages).sents]
+            sample_passage = sampled_passages[s]
+            sentences_sample = [sent for sent in self.nlp(sample_passage).sents]
             sentences_sample = [sent.text.strip() for sent in sentences_sample if len(sent) > 3]
             num_sentences_sample = len(sentences_sample)
             refs = expand_list1(sentences, num_sentences_sample)
@@ -158,7 +248,7 @@ class SelfCheckBERTScore:
             bertscore_array[:,s] = F1_arr_max_axis1
         bertscore_mean_per_sent = bertscore_array.mean(axis=-1)
         one_minus_bertscore_mean_per_sent = 1.0 - bertscore_mean_per_sent
-        return one_minus_bertscore_mean_per_sents
+        return one_minus_bertscore_mean_per_sent
 
 class SelfCheckNgram:
     def __init__(self, n: int, lowercase: bool = True):
@@ -210,12 +300,12 @@ class SelfCheckNLI:
     ):
         num_sentences = len(sentences)
         num_samples = len(sampled_passages)
-        scores = np.zeroes((num_sentences, num_samples))
+        scores = np.zeros((num_sentences, num_samples))
 
         for sent_i, sentence in enumerate(sentences):
             for sample_i, sample in enumerate(sampled_passages):
                 inputs = self.tokenizer.batch_encode_plus(
-                    batch_text_or_pairs=[(sentence, sample)],
+                    batch_text_or_text_pairs=[(sentence, sample)],
                     add_special_tokens=True, padding="longest",
                     truncation=True, return_tensors="pt",
                     return_token_type_ids=True, return_attention_mask=True,
@@ -226,7 +316,8 @@ class SelfCheckNLI:
                 prob_ = probs[0][1].item()
                 scores[sent_i, sample_i] = prob_
         scores_per_sentence = scores.mean(axis=-1)
-        return scores_per_sentence    
+        return scores_per_sentence
+      
 class SelfCheckLLMPrompt:
     def __init__(
             self,
@@ -240,6 +331,7 @@ class SelfCheckLLMPrompt:
         if device is None:
             device = torch.device("cpu")
         self.model.to(device)
+        self.device = device
         self.prompt_template = "Context: {context}\n\nSentence: {sentence}\n\nIs the sentence supported by the context above? Answer Yes or No.\n\nAnswer: "
         self.text_mapping = {'yes': 0.0, 'no': 1.0, 'n/a': 0.5}
         self.not_defined_text = set()
@@ -261,7 +353,7 @@ class SelfCheckLLMPrompt:
         disable = not verbose
 
         for sent_i in tqdm(range(num_sentences), disable=disable):
-            sentence = sentence[sent_i]
+            sentence = sentences[sent_i]
 
             for sample_i, sample in enumerate(sampled_passages):
                 sample = sample.replace("\n", " ")
@@ -272,7 +364,7 @@ class SelfCheckLLMPrompt:
                     max_new_tokens=5,
                     do_sample=False
                 )
-                ouput_text = self.tokenzier.batch_decode(
+                ouput_text = self.tokenizer.batch_decode(
                     generate_ids, skip_special_tokens=True,
                     clean_up_tokenization_spaces=False
                 )[0]
