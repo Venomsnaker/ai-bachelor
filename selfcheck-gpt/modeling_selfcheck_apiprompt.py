@@ -3,20 +3,28 @@ from groq import Groq
 from tqdm import tqdm
 from typing import Dict, List, Set, Tuple, Union
 import numpy as np
+import os
+from dotenv import load_dotenv
 
 class SelfCheckAPIPrompt:
     def __init__(
         self,
         client_type = "openai",
+        client = None,
         model = "gpt-3.5-turbo",
         api_key = None,
     ):
+        
+        load_dotenv()
+        assert ("UPSTAGE_API_KEY" in os.environ)
+
         if client_type == "openai":
-            self.client = OpenAI()
+            self.client = client if client is not None else OpenAI()
             print("Initiate OpenAI client ... model = {}".format(model))
         elif client_type == "groq":
             self.client = Groq(api_key=api_key)
             print("Initiate Groq client ... model = {}".format(model))
+
         self.client_type = client_type
         self.model = model
         self.prompt_template = "Context: {context}\n\nSentence: {sentence}\n\nIs the sentence supported by the context above? Answer Yes or No.\n\nAnswer: "
@@ -37,6 +45,7 @@ class SelfCheckAPIPrompt:
                 max_tokens=5
             )
             return chat_completion.choices[0].message.content
+            # return chat_completion['choices'][0]['message']['content']
         else:
             raise ValueError("client_type not implemented")
         
@@ -52,15 +61,15 @@ class SelfCheckAPIPrompt:
         disable = not verbose
 
         for sent_i in tqdm(range(num_sentences), disable=disable):
-            sentence = sentence[sent_i]
+            sentence = sentences[sent_i]
 
             for sample_i, sample in enumerate(sampled_passages):
-                sample = sample.replace("\n", " ")
+                sample = sample.replace("\n", " ") 
                 prompt = self.prompt_template.format(context=sample, sentence=sentence)
                 generate_text = self.completion(prompt)
                 score_ = self.text_postprocessing(generate_text)
                 scores[sent_i, sample_i] = score_
-        scores_per_sentence = scores.mean(aixs=-1)
+        scores_per_sentence = scores.mean(axis=-1)
         return scores_per_sentence
 
     def text_postprocessing(
@@ -68,14 +77,14 @@ class SelfCheckAPIPrompt:
             text,
     ):
         text = text.lower().strip()
-
-        if text[:3] == "yes":
+        
+        if text[:3] == 'yes':
             text = 'yes'
-        elif text[:2] == "no":
-            text = "no"
+        elif text[:2] == 'no':
+            text = 'no'
         else:
             if text not in self.not_defined_text:
-                print(f"Warning: {text} not defined")
+                print(f"warning: {text} not defined")
                 self.not_defined_text.add(text)
             text = 'n/a'
         return self.text_mapping[text]
