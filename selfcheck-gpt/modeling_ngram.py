@@ -36,11 +36,10 @@ class UnigramModel:
         """
         # k is smoothing pseudo-count for each unigram
         self.probs = {}
-        vocab_size = len(self.counts)
 
         for unigram, unigram_count in self.counts.items():
             prob_nom = unigram_count + k
-            prob_denom = self.token_count + k * vocab_size
+            prob_denom = self.token_count + k * len(self.counts)
             self.probs[unigram] = prob_nom / prob_denom
 
     def evaluate(self, sentences: List[str]) -> float:
@@ -64,8 +63,8 @@ class UnigramModel:
                 logprob = np.log(prob)
                 logprob_sent.append(logprob)
                 logprob_doc.append(logprob)
-            avg_neg_logprob.append([-1.0 * np.mean(logprob_sent)])
-            max_neg_logprob.append([-1.0 * np.min(logprob_sent)])
+            avg_neg_logprob += [-1.0 * np.mean(logprob_sent)]
+            max_neg_logprob += [-1.0 * np.min(logprob_sent)]
         avg_neg_logprob_doc = -1.0 * np.mean(logprob_doc)
         avg_max_neg_logprob_doc = np.mean(max_neg_logprob)
         return {
@@ -111,11 +110,10 @@ class NgramModel:
         """
         # k is smoothing pseudo-count for each unigram
         self.probs = {}
-        vocal_size = len(self.counts)
 
         for ngram, ngram_count in self.counts.items():
-            prob_nom = ngram_count + 1
-            prob_denom = self.ngram_count + k * vocal_size
+            prob_nom = ngram_count + k
+            prob_denom = self.ngram_count + k * len(self.counts)
             self.probs[ngram] = prob_nom / prob_denom
 
     def evaluate(self, sentences: List[str]) -> float:
@@ -144,8 +142,8 @@ class NgramModel:
                 logprob = np.log(prob)
                 logprob_sent.append(logprob)
                 logprob_doc.append(logprob)
-            avg_neg_logprob.append([-1.0 * np.mean(logprob_sent)])
-            max_neg_logprob.append([-1.0 * np.min(logprob_sent)])
+            avg_neg_logprob += [-1.0 * np.mean(logprob_sent)]
+            max_neg_logprob += [-1.0 * np.min(logprob_sent)]
         avg_neg_logprob_doc = -1.0 * np.mean(logprob_doc)
         avg_max_neg_logprob_doc = np.mean(max_neg_logprob)
         return {
