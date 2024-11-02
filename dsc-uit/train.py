@@ -13,7 +13,11 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)
 
 
-def train(args, model, device, train_data, dev_data, test_data, processor):
+def train(args, model, device, train_data, val_data, test_data, processor):
+    print("Length train data:", len(train_data))
+    print("Length test data:", len(test_data))
+    print("Length val data:", len(val_data))
+    
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
@@ -63,7 +67,7 @@ def train(args, model, device, train_data, dev_data, test_data, processor):
         raise Exception('Wrong Optimizer Name!!!')
 
 
-    max_acc = 0.
+    max_f1 = 0.
     
     for i_epoch in trange(0, int(args.num_train_epochs), desc="Epoch", disable=False):
         sum_loss = 0.
@@ -89,11 +93,11 @@ def train(args, model, device, train_data, dev_data, test_data, processor):
                 scheduler.step() 
             optimizer.zero_grad()
 
-        dev_acc, dev_f1 ,dev_precision,dev_recall = evaluate_acc_f1(args, model, device, dev_data, processor, mode='dev')
+        dev_acc, dev_f1 ,dev_precision,dev_recall = evaluate_acc_f1(args, model, device, val_data, processor, mode='val')
         logging.info("i_epoch is {}, dev_acc is {}, dev_f1 is {}, dev_precision is {}, dev_recall is {}".format(i_epoch, dev_acc, dev_f1, dev_precision, dev_recall))
 
-        if dev_acc > max_acc:
-            max_acc = dev_acc
+        if dev_f1 > max_f1:
+            max_f1 = dev_f1
 
             path_to_save = os.path.join(args.output_dir, args.model)
             if not os.path.exists(path_to_save):
@@ -110,7 +114,7 @@ def train(args, model, device, train_data, dev_data, test_data, processor):
 
 
 def evaluate_acc_f1(args, model, device, data, processor, macro=False, pre=None, mode='test'):
-    data_loader = DataLoader(data, batch_size=args.dev_batch_size, collate_fn=MyDataset.collate_func, shuffle=False)
+    data_loader = DataLoader(data, batch_size=args.dev_batch_size, collate_fn=MyDataset.collate_func,shuffle=False)
     n_correct, n_total = 0, 0
     t_targets_all, t_outputs_all = None, None
 
@@ -121,12 +125,11 @@ def evaluate_acc_f1(args, model, device, data, processor, macro=False, pre=None,
         for i_batch, t_batch in enumerate(data_loader):
             text_list, image_list, label_list, id_list = t_batch
             if args.model == 'MV_CLIP':
-                inputs = processor(text=text_list, images=image_list, padding='max_length', truncation=True,
-                                   max_length=args.max_len, return_tensors="pt").to(device)
+                inputs = processor(text=text_list, images=image_list, padding='max_length', truncation=True, max_length=args.max_len, return_tensors="pt").to(device)
                 labels = torch.tensor(label_list).to(device)
-
+            
             t_targets = labels
-            loss, t_outputs = model(inputs, labels=labels)
+            loss, t_outputs = model(inputs,labels=labels)
             sum_loss += loss.item()
             sum_step += 1
 
@@ -148,7 +151,6 @@ def evaluate_acc_f1(args, model, device, data, processor, macro=False, pre=None,
             label = t_targets_all.cpu().numpy().tolist()
             for x, y in zip(predict, label):
                 fout.write(f"{x} {y}\n")
-
     acc = n_correct / n_total
 
     # Determine unique classes

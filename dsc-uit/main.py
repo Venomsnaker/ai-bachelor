@@ -16,9 +16,9 @@ def set_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='0', type=str, help='device number')
     parser.add_argument('--model', default='MV_CLIP', type=str, help='the model name', choices=['MV_CLIP'])
-    parser.add_argument('--text_name', default='datasets', type=str, help='the text data folder name')
+    parser.add_argument('--text_name', default='datasets/binary-labels', type=str, help='the text data folder name')
     parser.add_argument('--simple_linear', default=False, type=bool, help='linear implementation choice')
-    parser.add_argument('--num_train_epochs', default=10, type=int, help='number of train epoched')
+    parser.add_argument('--num_train_epochs', default=4, type=int, help='number of train epoched')
     parser.add_argument('--train_batch_size', default=16, type=int, help='batch size in train phase')
     parser.add_argument('--dev_batch_size', default=16, type=int, help='batch size in dev phase')
     parser.add_argument('--label_number', default=2, type=int, help='the number of classification labels')
@@ -59,7 +59,7 @@ def main():
     seed_everything(args.seed)
 
     train_data = MyDataset(mode='train', text_name=args.text_name, limit=None)
-    dev_data = MyDataset(mode='valid', text_name=args.text_name, limit=None)
+    val_data = MyDataset(mode='val', text_name=args.text_name, limit=None)
     test_data = MyDataset(mode='test', text_name=args.text_name, limit=None)
 
     if args.model == 'MV_CLIP':
@@ -69,7 +69,7 @@ def main():
         raise RuntimeError('Error model name!')
 
     model.to(device)
-    train(args, model, device, train_data, dev_data, test_data, processor)
+    train(args, model, device, train_data, val_data, test_data, processor)
 
 
 if __name__ == '__main__':

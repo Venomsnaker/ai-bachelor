@@ -21,7 +21,8 @@ def set_args():
     parser.add_argument('--label_number', type=int, default=2, help='number of classification labels')
     parser.add_argument('--test_batch_size', type=int, default=8, help='batch size for text phase')
     parser.add_argument('--model_path', type=str, default="data/models/MV_CLIP", help='save model dpath')
-    parser.add_argument('--save_file', type=str, default="data/exports/result.json", help='save result path')
+    parser.add_argument('--model_variant', type=str, default="binary")
+    parser.add_argument('--save_file', type=str, default="data/exports/result_mvclip.json", help='save result path')
     parser.add_argument('--text_name', default='datasets', type=str, help='the text data folder name')
     parser.add_argument('--layers', default=3, type=int, help='number of layers of transformers')
     parser.add_argument('--simple_linear', default=False, type=bool, help='linear implementation choice')
@@ -85,9 +86,9 @@ def main():
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     model = MV_CLIP(args)
 
-    test_data = MyDataset(mode='public_test', text_name=args.text_name, limit=None)
+    test_data = MyDataset(mode='public-test', text_name=args.text_name, limit=None)
 
-    model.load_state_dict(torch.load(os.path.join(args.model_path, "model.pt"), map_location="cpu"))
+    model.load_state_dict(torch.load(os.path.join(args.model_path, "model-{}.pt".format(args.model_variant)), map_location="cpu"))
     model.to(device)
     model.eval()
 

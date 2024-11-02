@@ -15,19 +15,19 @@ class MyDataset(Dataset):
         
         if mode in ["train", "val", "test"]:
             for id in self.data.keys():
-                self.data[id]["image_path"] = os.path.join(WORKING_PATH,"train-images",str(id)+".jpg")
+                self.data[id]["image_path"] = os.path.join(WORKING_PATH,"images/train-images",str(id)+".jpg")
         else:
             for id in self.data.keys():
-                self.data[id]["image_path"] = os.path.join(WORKING_PATH,"dev-images",str(id)+".jpg")
+                self.data[id]["image_path"] = os.path.join(WORKING_PATH,"images/dev-images",str(id)+".jpg")
     
     def load_data(self, mode, limit):
         cnt = 0
         data_set=dict()
         
+        print(os.path.join(WORKING_PATH, self.text_name ,mode+".json"))
+        
         if mode in ["train"]:
-            file_path = os.path.join(WORKING_PATH, self.text_name, mode + ".json")
-            print(f"Attempting to open file: {file_path}")
-            f1 = open(file_path.replace('\\', '/'), 'r', encoding='utf-8')
+            f1= open(os.path.join(WORKING_PATH, self.text_name ,mode+".json"),'r',encoding='utf-8')
             datas = json.load(f1)
             
             for data in datas:
@@ -38,11 +38,11 @@ class MyDataset(Dataset):
                 sentence = data['text']
                 label = data['label']
  
-                if os.path.isfile(os.path.join(WORKING_PATH,"train-images",str(image)+".jpg")):
+                if os.path.isfile(os.path.join(WORKING_PATH,"images/train-images",str(image)+".jpg")):
                     data_set[image]={"text":sentence, 'label': label}
                     cnt += 1
         
-        if mode in ["test","valid"]:
+        if mode in ["test", "val"]:
             f1= open(os.path.join(WORKING_PATH, self.text_name ,mode+".json"),'r',encoding='utf-8')
             datas = json.load(f1)
             
@@ -51,12 +51,12 @@ class MyDataset(Dataset):
                 sentence = data['text']
                 label = data['label']
 
-                if os.path.isfile(os.path.join(WORKING_PATH,"train-images",str(image)+".jpg")):
+                if os.path.isfile(os.path.join(WORKING_PATH,"images/train-images",str(image)+".jpg")):
                     data_set[image]={"text":sentence, 'label': label}
                     cnt += 1
                     
         if mode in ["public_test"]:
-            f1= open(os.path.join(WORKING_PATH, self.text_name ,mode+".json"),'r',encoding='utf-8')
+            f1= open(os.path.join(WORKING_PATH, self.text_name, mode+".json"),'r',encoding='utf-8')
             datas = json.load(f1)
             
             for data in datas:
@@ -64,7 +64,7 @@ class MyDataset(Dataset):
                 sentence = data['text']
                 label = data['label']
 
-                if os.path.isfile(os.path.join(WORKING_PATH,"dev-images",str(image)+".jpg")):
+                if os.path.isfile(os.path.join(WORKING_PATH,"images/dev-images",str(image)+".jpg")):
                     data_set[image]={"text":sentence, 'label': label}
                     cnt += 1
 
@@ -72,7 +72,7 @@ class MyDataset(Dataset):
 
     def image_loader(self,id):
         return Image.open(self.data[id]["image_path"])
-        
+    
     def text_loader(self,id):
         return self.data[id]["text"]
 
@@ -96,7 +96,6 @@ class MyDataset(Dataset):
         image_list = []
         label_list = []
         id_list = []
-        
         for instance in batch_data:
             text_list.append(instance[0])
             image_list.append(instance[1])
