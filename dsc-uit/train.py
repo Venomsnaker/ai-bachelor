@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 def train(args, model, device, train_data, val_data, test_data, processor):
-    print("Length train data:", len(train_data))
-    print("Length test data:", len(test_data))
-    print("Length val data:", len(val_data))
     
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)

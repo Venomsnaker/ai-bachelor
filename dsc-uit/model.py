@@ -1,5 +1,7 @@
-from transformers import CLIPModel,BertConfig
+from transformers import CLIPModel,BertConfig, RobertaConfig
 from transformers.models.bert.modeling_bert import BertLayer
+from transformers import RobertaModel, RobertaConfig
+from transformers import AutoModel, AutoTokenizer
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -14,6 +16,7 @@ class MultimodalEncoder(nn.Module):
     def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
         all_encoder_layers = []
         all_encoder_attentions = []
+        
         for layer_module in self.layer:
             hidden_states, attention = layer_module(hidden_states, attention_mask, output_attentions=True)
             all_encoder_attentions.append(attention)
@@ -28,7 +31,8 @@ class MV_CLIP(nn.Module):
     def __init__(self, args):
         super(MV_CLIP, self).__init__()
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-        self.config = BertConfig.from_pretrained("bert-base-uncased")
+        # self.config = RobertaConfig.from_pretrained("roberta-base")
+        self.config = RobertaConfig.from_pretrained("vinai/phobert-large")
         self.config.hidden_size = 512
         self.config.num_attention_heads = 8
         self.trans = MultimodalEncoder(self.config, layer_number=args.layers)

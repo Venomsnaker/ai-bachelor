@@ -18,11 +18,11 @@ def set_args():
     parser.add_argument('--text_size', default=512, type=int, help='text hidden size')
     parser.add_argument('--image_size', default=768, type=int, help='image hidden size')
     parser.add_argument('--dropout_rate', default=0.5, type=float, help='dropout rate')
-    parser.add_argument('--label_number', type=int, default=2, help='number of classification labels')
+    parser.add_argument('--label_number', type=int, default=4, help='number of classification labels')
     parser.add_argument('--test_batch_size', type=int, default=8, help='batch size for text phase')
     parser.add_argument('--model_path', type=str, default="data/models/MV_CLIP", help='save model dpath')
-    parser.add_argument('--model_variant', type=str, default="binary")
-    parser.add_argument('--save_file', type=str, default="data/exports/result_mvclip.json", help='save result path')
+    parser.add_argument('--model_variant', type=str, default="phobert-base-v2-quad")
+    parser.add_argument('--save_file', type=str, default="data/exports/result_mvclip_ver0.4.json", help='save result path')
     parser.add_argument('--text_name', default='datasets', type=str, help='the text data folder name')
     parser.add_argument('--layers', default=3, type=int, help='number of layers of transformers')
     parser.add_argument('--simple_linear', default=False, type=bool, help='linear implementation choice')
@@ -68,14 +68,14 @@ def predict(args, model, device, data, processor, pre = None):
                 data.append({'image_id':image_, 'text':text_, 'label':label_, 'predict':predict_, 'logit':logi_}) 
         json.dump({'data': data}, fout, ensure_ascii=False, indent=4)            
         
-        acc = n_correct / n_total
-        f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu())
-        precision =  metrics.precision_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu())
-        recall = metrics.recall_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu())
-        f1_ = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
-        precision_ =  metrics.precision_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
-        recall_ = metrics.recall_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
-        print("test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}, micro_test_f1 is {}, micro_test_precision is {}, micro_test_recall is {}".format(acc, f1_, precision_, recall_, f1, precision, recall))
+        # acc = n_correct / n_total
+        # f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), average="micro")
+        # precision =  metrics.precision_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), average="micro")
+        # recall = metrics.recall_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), average="micro")
+        # f1_ = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
+        # precision_ =  metrics.precision_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
+        # recall_ = metrics.recall_score(t_targets_all.cpu(),torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1],average='macro')
+        # print("test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}, micro_test_f1 is {}, micro_test_precision is {}, micro_test_recall is {}".format(acc, f1_, precision_, recall_, f1, precision, recall))
 
 def main():
     args = set_args()
@@ -86,8 +86,7 @@ def main():
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     model = MV_CLIP(args)
 
-    test_data = MyDataset(mode='public-test', text_name=args.text_name, limit=None)
-
+    test_data = MyDataset(mode='public_test', text_name=args.text_name, limit=None)
     model.load_state_dict(torch.load(os.path.join(args.model_path, "model-{}.pt".format(args.model_variant)), map_location="cpu"))
     model.to(device)
     model.eval()
