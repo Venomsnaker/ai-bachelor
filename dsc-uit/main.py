@@ -18,7 +18,7 @@ def set_args():
     parser.add_argument('--model', default='MV_CLIP', type=str, help='the model name', choices=['MV_CLIP'])
     parser.add_argument('--text_name', default='datasets/quad-labels', type=str, help='the text data folder name')
     parser.add_argument('--simple_linear', default=False, type=bool, help='linear implementation choice')
-    parser.add_argument('--num_train_epochs', default=10, type=int, help='number of train epoched')
+    parser.add_argument('--num_train_epochs', default=4, type=int, help='number of train epoched')
     parser.add_argument('--train_batch_size', default=16, type=int, help='batch size in train phase')
     parser.add_argument('--dev_batch_size', default=16, type=int, help='batch size in dev phase')
     parser.add_argument('--label_number', default=4, type=int, help='the number of classification labels')

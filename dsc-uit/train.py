@@ -46,6 +46,7 @@ def train(args, model, device, train_data, val_data, test_data, processor):
     elif args.optimizer_name == 'adam':
         print('Use AdamW Optimizer for Training.')
         from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+        
         if args.model == 'MV_CLIP':
             clip_params = list(map(id, model.model.parameters()))
             base_params = filter(lambda p: id(p) not in clip_params, model.parameters())
@@ -90,11 +91,11 @@ def train(args, model, device, train_data, val_data, test_data, processor):
                 scheduler.step() 
             optimizer.zero_grad()
 
-        dev_acc, dev_f1 ,dev_precision,dev_recall = evaluate_acc_f1(args, model, device, val_data, processor, mode='val')
-        logging.info("i_epoch is {}, dev_acc is {}, dev_f1 is {}, dev_precision is {}, dev_recall is {}".format(i_epoch, dev_acc, dev_f1, dev_precision, dev_recall))
+        val_acc, val_f1 ,val_precision, val_recall = evaluate_acc_f1(args, model, device, val_data, processor, mode='val')
+        logging.info("i_epoch is {}, val_acc is {}, val_f1 is {}, val_precision is {}, val_recall is {}".format(i_epoch, val_acc, val_f1, val_precision, val_recall))
 
-        if dev_f1 > max_f1:
-            max_f1 = dev_f1
+        if val_f1 > max_f1:
+            max_f1 = val_f1
 
             path_to_save = os.path.join(args.output_dir, args.model)
             if not os.path.exists(path_to_save):
@@ -103,8 +104,7 @@ def train(args, model, device, train_data, val_data, test_data, processor):
             torch.save(model_to_save.state_dict(), os.path.join(path_to_save, 'model.pt'))
 
             test_acc, test_f1,test_precision,test_recall = evaluate_acc_f1(args, model, device, test_data, processor,macro = True, mode='test')
-            _, test_f1_,test_precision_,test_recall_ = evaluate_acc_f1(args, model, device, test_data, processor, mode='test')
-            logging.info("i_epoch is {}, test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}, micro_test_f1 is {}, micro_test_precision is {}, micro_test_recall is {}".format(i_epoch, test_acc, test_f1, test_precision, test_recall, test_f1_, test_precision_, test_recall_))
+            logging.info("i_epoch is {}, test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}".format(i_epoch, test_acc, test_f1, test_precision, test_recall))
 
         torch.cuda.empty_cache()
     logger.info('Train done')
@@ -148,18 +148,15 @@ def evaluate_acc_f1(args, model, device, data, processor, macro=False, pre=None,
             label = t_targets_all.cpu().numpy().tolist()
             for x, y in zip(predict, label):
                 fout.write(f"{x} {y}\n")
+                
     acc = n_correct / n_total
-
-    # Determine unique classes
-    unique_classes = torch.unique(t_targets_all).cpu().numpy()
-
-    if len(unique_classes) > 2:  # Multiclass case
-        f1 = metrics.f1_score(t_targets_all.cpu(), t_outputs_all.cpu(), average='macro')
-        precision = metrics.precision_score(t_targets_all.cpu(), t_outputs_all.cpu(), average='macro')
-        recall = metrics.recall_score(t_targets_all.cpu(), t_outputs_all.cpu(), average='macro')
-    else:  # Binary case
-        f1 = metrics.f1_score(t_targets_all.cpu(), t_outputs_all.cpu())
-        precision = metrics.precision_score(t_targets_all.cpu(), t_outputs_all.cpu())
-        recall = metrics.recall_score(t_targets_all.cpu(), t_outputs_all.cpu())
-
-    return acc, f1, precision, recall
+    
+    if not macro:   
+        f1 = metrics.f1_score(t_targets_all.cpu(), t_outputs_all.cpu(),average="micro")
+        precision =  metrics.precision_score(t_targets_all.cpu(),t_outputs_all.cpu(),average="micro")
+        recall = metrics.recall_score(t_targets_all.cpu(),t_outputs_all.cpu(),average="micro")
+    else:
+        f1 = metrics.f1_score(t_targets_all.cpu(), t_outputs_all.cpu(), labels=[0, 1],average='macro')
+        precision =  metrics.precision_score(t_targets_all.cpu(),t_outputs_all.cpu(), labels=[0, 1],average='macro')
+        recall = metrics.recall_score(t_targets_all.cpu(),t_outputs_all.cpu(), labels=[0, 1],average='macro')
+    return acc, f1 ,precision,recall
