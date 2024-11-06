@@ -35,6 +35,7 @@ class MV_CLIP(nn.Module):
     def __init__(self, args):
         super(MV_CLIP, self).__init__()
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+        # self.config = BertConfig.from_pretrained("bert-base-uncased")
         self.config = RobertaConfig.from_pretrained("vinai/phobert-large")
         self.config.hidden_size = 512
         self.config.num_attention_heads = 8

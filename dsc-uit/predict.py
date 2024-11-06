@@ -21,8 +21,8 @@ def set_args():
     parser.add_argument('--label_number', type=int, default=4, help='number of classification labels')
     parser.add_argument('--test_batch_size', type=int, default=8, help='batch size for text phase')
     parser.add_argument('--model_path', type=str, default="data/models/MV_CLIP", help='save model dpath')
-    parser.add_argument('--model_variant', type=str, default="phobert-large-quad")
-    parser.add_argument('--save_file', type=str, default="data/exports/result_mvclip_ver0.4.json", help='save result path')
+    parser.add_argument('--model_variant', type=str, default="phobert-large")
+    parser.add_argument('--save_file', type=str, default="data/exports/result_mvclip_ver0.5.json", help='save result path')
     parser.add_argument('--text_name', default='datasets', type=str, help='the text data folder name')
     parser.add_argument('--layers', default=3, type=int, help='number of layers of transformers')
     parser.add_argument('--simple_linear', default=False, type=bool, help='linear implementation choice')
@@ -66,7 +66,8 @@ def predict(args, model, device, data, processor, pre = None):
             label = t_targets_all.cpu().numpy().tolist()
             for image_, text_, label_, predict_, logi_ in zip(image, text,label, predict, logit):
                 data.append({'image_id':image_, 'text':text_, 'label':label_, 'predict':predict_, 'logit':logi_}) 
-        json.dump({'data': data}, fout, ensure_ascii=False, indent=4)            
+        json.dump({'data': data}, fout, ensure_ascii=False, indent=4)
+        print("Finish predict test.")
         
         # acc = n_correct / n_total
         # f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), average="micro")

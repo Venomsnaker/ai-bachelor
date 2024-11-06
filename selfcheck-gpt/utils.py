@@ -10,7 +10,7 @@ class MQAGConfig:
 class NLIConfig:
     nli_model: str = "potsawee/deberta-v3-large-mnli"
 
-class LMMPromptConfig:
+class LLMPromptConfig:
     model: str = "meta-llama/Llama-2-7b-chat-hf"
 
 def prepare_qa_input(t5_tokenizer, context, device):

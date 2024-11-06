@@ -10,7 +10,7 @@ logging.set_verbosity_error()
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 from transformers import LongformerTokenizer, LongformerForMultipleChoice, LongformerForSequenceClassification
 from transformers import DebertaV2ForSequenceClassification, DebertaV2Tokenizer
-from utils import MQAGConfig, expand_list1, expand_list2, NLIConfig
+from utils import MQAGConfig, expand_list1, expand_list2, NLIConfig, LLMPromptConfig
 from modeling_mqag import question_generation_sentence_level, answering
 from modeling_ngram import UnigramModel, NgramModel
 from modeling_selfcheck_apiprompt import SelfCheckAPIPrompt
@@ -278,9 +278,9 @@ class SelfCheckNgram:
     
 class SelfCheckNLI:
     def __init__(
-            self,
-            nli_model: str = None,
-            device = None
+        self,
+        nli_model: str = None,
+        device = None
     ):
         nli_model = nli_model if nli_model is not None else NLIConfig.nli_model
         self.tokenizer = DebertaV2Tokenizer.from_pretrained(nli_model)
@@ -320,11 +320,11 @@ class SelfCheckNLI:
       
 class SelfCheckLLMPrompt:
     def __init__(
-            self,
-            model: str = None,
-            device = None
+        self,
+        model: str = None,
+        device = None
     ):
-        model = model if model is not None else ""
+        model = model if model is not None else LLMPromptConfig.model
         self.tokenizer = AutoTokenizer.from_pretrained(model)
         self.model = AutoModelForCausalLM.from_pretrained(model, torch_dtype="auto")
         self.model.eval()
@@ -375,8 +375,8 @@ class SelfCheckLLMPrompt:
         return scores_per_sentence
 
     def text_postprocessing(
-            self,
-            text,
+        self,
+        text,
     ):
         text = text.lower().strip()
 
