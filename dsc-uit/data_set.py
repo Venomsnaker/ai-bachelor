@@ -16,9 +16,12 @@ class MyDataset(Dataset):
         if mode in ["train", "val", "test"]:
             for id in self.data.keys():
                 self.data[id]["image_path"] = os.path.join(WORKING_PATH,"images/train-images",str(id)+".jpg")
-        else:
+        elif mode in ["public_test"]:
             for id in self.data.keys():
                 self.data[id]["image_path"] = os.path.join(WORKING_PATH,"images/dev-images",str(id)+".jpg")
+        elif mode in ["private_test"]:
+            for id in self.data.keys():
+                self.data[id]["image_path"] = os.path.join(WORKING_PATH,"images/test-images",str(id)+".jpg")
     
     def load_data(self, mode, limit):
         cnt = 0
@@ -63,6 +66,19 @@ class MyDataset(Dataset):
                 label = data['label']
 
                 if os.path.isfile(os.path.join(WORKING_PATH,"images/dev-images",str(image)+".jpg")):
+                    data_set[image]={"text":sentence, 'label': label}
+                    cnt += 1
+                    
+        if mode in ["private_test"]:
+            f1= open(os.path.join(WORKING_PATH, self.text_name, mode+".json"),'r',encoding='utf-8')
+            datas = json.load(f1)
+            
+            for data in datas:
+                image = data['image_id']
+                sentence = data['text']
+                label = data['label']
+
+                if os.path.isfile(os.path.join(WORKING_PATH,"images/test-images",str(image)+".jpg")):
                     data_set[image]={"text":sentence, 'label': label}
                     cnt += 1
 

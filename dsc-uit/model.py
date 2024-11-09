@@ -13,8 +13,8 @@ import copy
 class MultimodalEncoder(nn.Module):
     def __init__(self, config, layer_number):
         super(MultimodalEncoder, self).__init__()
-        # layer = BertLayer(config)
-        layer = RobertaLayer(config)
+        layer = BertLayer(config)
+        # layer = RobertaLayer(config)
         self.layer = nn.ModuleList([copy.deepcopy(layer) for _ in range(layer_number)])
 
     def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
@@ -35,8 +35,9 @@ class MV_CLIP(nn.Module):
     def __init__(self, args):
         super(MV_CLIP, self).__init__()
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-        # self.config = BertConfig.from_pretrained("bert-base-uncased")
-        self.config = RobertaConfig.from_pretrained("vinai/phobert-large")
+        self.config = BertConfig.from_pretrained("bert-base-uncased")
+        # self.config = RobertaConfig.from_pretrained("roberta-base")
+        # self.config = RobertaConfig.from_pretrained("vinai/phobert-large")
         self.config.hidden_size = 512
         self.config.num_attention_heads = 8
         self.trans = MultimodalEncoder(self.config, layer_number=args.layers)
