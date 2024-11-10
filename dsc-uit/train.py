@@ -94,17 +94,26 @@ def train(args, model, device, train_data, val_data, test_data, processor):
         val_acc, val_f1 ,val_precision, val_recall = evaluate_acc_f1(args, model, device, val_data, processor, mode='val')
         logging.info("i_epoch is {}, val_acc is {}, val_f1 is {}, val_precision is {}, val_recall is {}".format(i_epoch, val_acc, val_f1, val_precision, val_recall))
 
-        if val_f1 > max_f1:
-            max_f1 = val_f1
+        path_to_save = os.path.join(args.output_dir, args.model)
+        if not os.path.exists(path_to_save):
+            os.mkdir(path_to_save)
+        model_to_save = (model.module if hasattr(model, "module") else model)
+        torch.save(model_to_save.state_dict(), os.path.join(path_to_save, 'model.pt'))
 
-            path_to_save = os.path.join(args.output_dir, args.model)
-            if not os.path.exists(path_to_save):
-                os.mkdir(path_to_save)
-            model_to_save = (model.module if hasattr(model, "module") else model)
-            torch.save(model_to_save.state_dict(), os.path.join(path_to_save, 'model.pt'))
+        test_acc, test_f1,test_precision,test_recall = evaluate_acc_f1(args, model, device, test_data, processor,macro = True, mode='test')
+        logging.info("i_epoch is {}, test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}".format(i_epoch, test_acc, test_f1, test_precision, test_recall))
+        
+        # if val_f1 > max_f1:
+        #     max_f1 = val_f1
 
-            test_acc, test_f1,test_precision,test_recall = evaluate_acc_f1(args, model, device, test_data, processor,macro = True, mode='test')
-            logging.info("i_epoch is {}, test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}".format(i_epoch, test_acc, test_f1, test_precision, test_recall))
+        #     path_to_save = os.path.join(args.output_dir, args.model)
+        #     if not os.path.exists(path_to_save):
+        #         os.mkdir(path_to_save)
+        #     model_to_save = (model.module if hasattr(model, "module") else model)
+        #     torch.save(model_to_save.state_dict(), os.path.join(path_to_save, 'model.pt'))
+
+        #     test_acc, test_f1,test_precision,test_recall = evaluate_acc_f1(args, model, device, test_data, processor,macro = True, mode='test')
+        #     logging.info("i_epoch is {}, test_acc is {}, macro_test_f1 is {}, macro_test_precision is {}, macro_test_recall is {}".format(i_epoch, test_acc, test_f1, test_precision, test_recall))
 
         torch.cuda.empty_cache()
     logger.info('Train done')
