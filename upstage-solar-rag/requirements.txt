@@ -1,0 +1,8 @@
+python-dotenv
+gradio
+langchain
+langchain-upstage
+langchain-core
+langchain-chroma 
+langgraph
+chromadb
