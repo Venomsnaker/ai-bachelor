@@ -10,17 +10,12 @@ class SelfCheckAPIPrompt:
     def __init__(
         self,
         client_type = "openai",
-        client = None,
         model = "gpt-3.5-turbo",
         api_key = None,
     ):
-        
-        load_dotenv()
-        assert ("UPSTAGE_API_KEY" in os.environ)
-
         if client_type == "openai":
-            self.client = client if client is not None else OpenAI()
-            print("Initiate OpenAI client ... model = {}".format(model))
+            self.client = OpenAI()
+            print("Initiate OpenAI client... model = {}".format(model)) 
         elif client_type == "groq":
             self.client = Groq(api_key=api_key)
             print("Initiate Groq client ... model = {}".format(model))
@@ -44,8 +39,7 @@ class SelfCheckAPIPrompt:
                 temperature=0.0,
                 max_tokens=5
             )
-            return chat_completion.choices[0].message.content
-            # return chat_completion['choices'][0]['message']['content']
+            return chat_completion['choices'][0]['message']['content']
         else:
             raise ValueError("client_type not implemented")
         
