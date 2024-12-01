@@ -78,7 +78,7 @@ class NgramModel:
             self.nlp = spacy.load("en_core_web_sm")
             self.sentence_count = 0
             self.ngram_count = 0
-            self.counts = {"<unk": 0}
+            self.counts = {"<unk>": 0}
             self.n = n
             self.lowercase = lowercase
             self.left_pad_symbol = left_pad_symbol
@@ -137,7 +137,7 @@ class NgramModel:
 
             for token, ng in zip(tokens, ngs):
                 if ng not in self.counts:
-                    ng = '<unk'
+                    ng = '<unk>'
                 prob = self.probs[ng]
                 logprob = np.log(prob)
                 logprob_sent.append(logprob)
